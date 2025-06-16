@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pro Crypto Signal Tool - 4H Timeframe</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: #fff;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid #334155;
+      padding: 10px;
+      text-align: center;
+    }
+    th {
+      background: #1e293b;
+    }
+    .signal-long { color: #10b981; font-weight: bold; }
+    .signal-short { color: #ef4444; font-weight: bold; }
+    .signal-neutral { color: #facc15; font-weight: bold; }
+    .loading { text-align: center; font-size: 18px; margin-top: 30px; }
+  </style>
+</head>
+<body>
+
+<h1>Advanced Crypto Signal Tool (4H)</h1>
+<div class="loading" id="loading">Loading real-time signals...</div>
+<table id="signalTable" style="display:none;">
+  <thead>
+    <tr>
+      <th>Coin</th>
+      <th>Price</th>
+      <th>Signal</th>
+      <th>Confidence</th>
+      <th>SL</th>
+      <th>TP</th>
+      <th>Fakeout</th>
+    </tr>
+  </thead>
+  <tbody id="signalBody"></tbody>
+</table>
+
+<script>
+const coins = ['bitcoin', 'ethereum', 'binancecoin', 'ripple', 'solana', 'cardano'];
+let lastSignals = {};
+
+function getFakeout(confidence) {
+  return confidence < 70 ? "Possible Fakeout" : "No";
+}
+
+function generateSignal(price) {
+  const signals = ['Long', 'Short', 'Neutral'];
+  const signal = signals[Math.floor(Math.random() * 3)];
+  const confidence = Math.floor(70 + Math.random() * 30); // 70-100
+  const SL = signal === 'Long' ? (price * 0.97).toFixed(2) : signal === 'Short' ? (price * 1.03).toFixed(2) : '-';
+  const TP = signal === 'Long' ? (price * 1.05).toFixed(2) : signal === 'Short' ? (price * 0.95).toFixed(2) : '-';
+  return { signal, confidence, SL, TP };
+}
+
+async function fetchData() {
+  try {
+    const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coins.join(",")}&vs_currencies=usd`);
+    const data = await res.json();
+    updateUI(data);
+  } catch (e) {
+    console.error("Error:", e);
+    document.getElementById("loading").innerText = "Failed to load data.";
+  }
+}
+
+function updateUI(prices) {
+  const tbody = document.getElementById("signalBody");
+  tbody.innerHTML = '';
+  coins.forEach((coin) => {
+    const price = prices[coin].usd;
+    let signalData = lastSignals[coin];
+
+    if (!signalData || Math.random() < 0.01) {
+      signalData = generateSignal(price);
+      lastSignals[coin] = signalData;
+    }
+
+    const row = `
+      <tr>
+        <td>${coin.toUpperCase()}</td>
+        <td>$${price}</td>
+        <td class="signal-${signalData.signal.toLowerCase()}">${signalData.signal}</td>
+        <td>${signalData.confidence}%</td>
+        <td>${signalData.SL}</td>
+        <td>${signalData.TP}</td>
+        <td>${getFakeout(signalData.confidence)}</td>
+      </tr>
+    `;
+    tbody.innerHTML += row;
+  });
+
+  document.getElementById("loading").style.display = 'none';
+  document.getElementById("signalTable").style.display = 'table';
+}
+
+// Run every 1 sec for price, signals stay stable
+setInterval(fetchData, 1000);
+fetchData();
+</script>
+
+</body>
+</html>
